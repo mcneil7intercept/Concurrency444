@@ -1,17 +1,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-typedef struct {
-	int *array;
-	size_t used;
-	size_t size;
-} Buffer;
-
-void init_buf(Buffer *b, size_t init_size);
-void insert_buf(Buffer *b, int element);
-void remove_top_buf(Buffer *b, int *topelement);
-void free_buf(Buffer *b);
+#include "lib_buffer.h"
 
 void *produce(void *buffer);
 void *consume(void *buffer);
@@ -21,7 +11,7 @@ Buffer b;
 
 int main()
 {
-	init_buf(&b, 5);
+	init_buffer(&b, 5);
 
 	pthread_t producer_thread;
 	pthread_t consumer_thread;
@@ -55,59 +45,20 @@ int main()
 		printf("%d: %d\n", i, b.array[i]);
 	}
 
-	free_buf(&b);
+	free_buffer(&b);
 	return 0;
 
-}
-
-void init_buf(Buffer *b, size_t init_size)
-{
-	b->array = (int *)malloc(init_size * sizeof(int));
-	b->used = 0;
-	b->size = init_size;
-}
-
-void insert_buf(Buffer *b, int element)
-{
-	if(b->used == b->size) {
-		b->size *= 2;
-		b->array = (int *)realloc(b->array, b->size * sizeof(int));
-	}
-	b->array[b->used++] = element;
-}
-
-void remove_top_buf(Buffer *b, int *topelement)
-{
-	//check if the buffer is empty
-	if(b->used == 0){
-		//set the value -1 if the buffer is empty?
-		 *topelement = -1;
-	}
-	else{
-		//retreive the last element placed in the buffer
-		*topelement = b->array[b->used - 1];
-		//set the element to 0 in the array and decrement the used counter
-		b->array[b->used-1] = 0;
-		b->used--;
-	}
-}
-
-void free_buf(Buffer *b)
-{
-	free(b->array);
-	b->array = NULL;
-	b->used = b->size = 0;
 }
 
 void *produce(void *buffer)
 {
 	Buffer *b = (Buffer *)buffer;
 	pthread_mutex_lock(&the_mutex);
-	printf("mutex locked in producer\n");
-	insert_buf(&(*b), 3);
-	insert_buf(&(*b), 5);
+	printf("mutex obtained by producer\n");
+	insert_element(&(*b), 3);
+	insert_element(&(*b), 5);
 	pthread_mutex_unlock(&the_mutex);
-	printf("produced 3 & 5 into buffer\n");
+	printf("mutex released by producer\n");
 
 	return NULL;
 }
@@ -118,8 +69,9 @@ void *consume(void *buffer)
 	int element = 0;
 	pthread_mutex_lock(&the_mutex);
 	printf("mutex obtained in consumer\n");	
-	remove_top_buf(b, &element);
+	remove_element(b, &element);
 	pthread_mutex_unlock(&the_mutex);
-	printf("Value consumed: %d\n", element); 
+	printf("mutex released by consumer\n");
+	printf("value consumed: %d\n", element); 
 	return NULL;
 }
