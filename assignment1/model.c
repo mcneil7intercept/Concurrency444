@@ -10,6 +10,7 @@ typedef struct {
 
 void init_buf(Buffer *b, size_t init_size);
 void insert_buf(Buffer *b, int element);
+void remove_top_buf(Buffer *b, int *topelement);
 void free_buf(Buffer *b);
 
 void *produce(void *buffer);
@@ -73,6 +74,21 @@ void insert_buf(Buffer *b, int element)
 	b->array[b->used++] = element;
 }
 
+void remove_top_buf(Buffer *b, int *topelement)
+{
+	//check if the buffer is empty
+	if(b->used == 0){
+		//set the value -1 if the buffer is empty?
+		 *topelement = -1;
+	}
+	else{
+		//retreive the last element placed in the buffer
+		*topelement = b->array[b->used - 1];
+		//set the element to 0 in the array and decrement the used counter
+		b->array[b->used--] = 0;
+	}
+}
+
 void free_buf(Buffer *b)
 {
 	free(b->array);
@@ -93,8 +109,11 @@ void *produce(void *buffer)
 }
 
 void *consume(void *buffer)
-{
+{	
 	Buffer *b = (Buffer *)buffer;
-
+	int element = 0;
+	sleep(3);	
+	remove_top_buf(b, &element);
+	printf("Value consumed: %d\n", element); 
 	return NULL;
 }
