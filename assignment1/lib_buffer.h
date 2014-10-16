@@ -9,7 +9,12 @@ typedef struct {
 	size_t size;
 } Buffer;
 
-void init_buffer(Buffer *b, size_t init_size);
+typedef struct {
+	int value;
+	int wait_time;
+} Element;
+
+void init_buffer(Buffer *b);
 void insert_element(Buffer *b, int element);
 void remove_element(Buffer *b, int *topelement);
 void free_buffer(Buffer *b);

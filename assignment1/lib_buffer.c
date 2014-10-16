@@ -1,19 +1,17 @@
 #include "lib_buffer.h"
 
-void init_buffer(Buffer *b, size_t init_size)
+void init_buffer(Buffer *b)
 {
-	b->array = (int *)malloc(init_size * sizeof(int));
+	b->array = (int *)malloc(32 * sizeof(int));
 	b->used = 0;
-	b->size = init_size;
+	b->size = 32;
 }
 
 void insert_element(Buffer *b, int element)
 {
-	if(b->used == b->size) {
-		b->size *= 2;
-		b->array = (int *)realloc(b->array, b->size * sizeof(int));
+	if(b->used < b->size) {
+		b->array[b->used++] = element;
 	}
-	b->array[b->used++] = element;
 }
 
 void remove_element(Buffer *b, int *topelement)

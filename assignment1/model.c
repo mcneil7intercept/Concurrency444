@@ -1,7 +1,12 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "lib_buffer.h"
+
+// these includes are only necessary for testing purposes, use RDRAND for actual random number generation
+#include <time.h>
+#include <stdlib.h>
 
 void *produce(void *buffer);
 void *consume(void *buffer);
@@ -11,7 +16,7 @@ Buffer b;
 
 int main()
 {
-	init_buffer(&b, 5);
+	init_buffer(&b);
 
 	pthread_t producer_thread;
 	pthread_t consumer_thread;
@@ -26,7 +31,8 @@ int main()
 		return 2;
 	}
 
-	printf("main thread working...\n");
+	printf("main thread working...\n\n");
+	sleep(500);
 
 	/* wait for the second thread to finish */
 	if(pthread_join(producer_thread, NULL)) {
@@ -50,28 +56,55 @@ int main()
 
 }
 
+// producer thread
 void *produce(void *buffer)
 {
-	Buffer *b = (Buffer *)buffer;
-	pthread_mutex_lock(&the_mutex);
-	printf("mutex obtained by producer\n");
-	insert_element(&(*b), 3);
-	insert_element(&(*b), 5);
-	pthread_mutex_unlock(&the_mutex);
-	printf("mutex released by producer\n");
+	while(1) {
+		Buffer *b = (Buffer *)buffer;
+		srand(time(NULL));
+		int wait_time = rand() % 7 + 3;
+		int r = rand();
+
+		sleep(wait_time);
+
+		pthread_mutex_lock(&the_mutex);
+		printf("mutex obtained by producer\n");
+
+		if (b->used == b->size) {
+			printf("buffer is full\n");
+		} else {
+			insert_element(&(*b), r);
+			printf("inserting %d into buffer\n", r);
+		}
+	
+		pthread_mutex_unlock(&the_mutex);
+		printf("mutex released by producer\n\n");
+	}
 
 	return NULL;
 }
 
+// consumer thread
 void *consume(void *buffer)
 {	
 	Buffer *b = (Buffer *)buffer;
-	int element = 0;
-	pthread_mutex_lock(&the_mutex);
-	printf("mutex obtained in consumer\n");	
-	remove_element(b, &element);
-	pthread_mutex_unlock(&the_mutex);
-	printf("mutex released by consumer\n");
-	printf("value consumed: %d\n", element); 
+
+	while (1) {
+		int element = 0;
+
+		pthread_mutex_lock(&the_mutex);
+		printf("mutex obtained in consumer\n");
+
+		if (b->used == 0) {
+			printf("buffer is empty\n");
+		} else {
+			remove_element(b, &element);
+			printf("removed %d from buffer\n", element); 
+		}
+
+		pthread_mutex_unlock(&the_mutex);
+		printf("mutex released by consumer\n\n");
+	}
+	
 	return NULL;
 }
