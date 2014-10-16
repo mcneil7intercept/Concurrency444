@@ -16,9 +16,11 @@ void free_buf(Buffer *b);
 void *produce(void *buffer);
 void *consume(void *buffer);
 
+pthread_mutex_t the_mutex = PTHREAD_MUTEX_INITIALIZER;
+Buffer b;
+
 int main()
 {
-	Buffer b;
 	init_buf(&b, 5);
 
 	pthread_t producer_thread;
@@ -85,7 +87,8 @@ void remove_top_buf(Buffer *b, int *topelement)
 		//retreive the last element placed in the buffer
 		*topelement = b->array[b->used - 1];
 		//set the element to 0 in the array and decrement the used counter
-		b->array[b->used--] = 0;
+		b->array[b->used-1] = 0;
+		b->used--;
 	}
 }
 
@@ -99,10 +102,11 @@ void free_buf(Buffer *b)
 void *produce(void *buffer)
 {
 	Buffer *b = (Buffer *)buffer;
-
+	pthread_mutex_lock(&the_mutex);
+	printf("mutex locked in producer\n");
 	insert_buf(&(*b), 3);
 	insert_buf(&(*b), 5);
-
+	pthread_mutex_unlock(&the_mutex);
 	printf("produced 3 & 5 into buffer\n");
 
 	return NULL;
@@ -112,8 +116,10 @@ void *consume(void *buffer)
 {	
 	Buffer *b = (Buffer *)buffer;
 	int element = 0;
-	sleep(3);	
+	pthread_mutex_lock(&the_mutex);
+	printf("mutex obtained in consumer\n");	
 	remove_top_buf(b, &element);
+	pthread_mutex_unlock(&the_mutex);
 	printf("Value consumed: %d\n", element); 
 	return NULL;
 }
