@@ -1,84 +1,77 @@
-#include <pthread.h>
+#define LIMITER 20
+
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include "lib_buffer.h"
+#include <pthread.h>
+#include "buffer_lib.h"
+#include <time.h>		//required for srand seeding; TESTING ONLY
 
-// these includes are only necessary for testing purposes, use RDRAND for actual random number generation
-#include <time.h>
-#include <stdlib.h>
+void *produce(void *buffer);	//producer thread
+void *consume(void *buffer);	//consumer thread
 
-void *produce(void *buffer);
-void *consume(void *buffer);
-
-pthread_mutex_t the_mutex = PTHREAD_MUTEX_INITIALIZER;
-Buffer b;
+pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main()
 {
-	init_buffer(&b);
+	Buffer b;
+	init_b(&b, 32);
 
-	pthread_t producer_thread;
-	pthread_t consumer_thread;
+	pthread_t producer;
+	pthread_t consumer;
 
-	if(pthread_create(&producer_thread, NULL, produce, &b)) {
+	if(pthread_create(&producer, NULL, produce, &b)) {
 		fprintf(stderr, "Error creating thread\n");
 		return 1;
 	}
 
-	if(pthread_create(&consumer_thread, NULL, consume, &b)) {
+	if(pthread_create(&consumer, NULL, consume, &b)) {
 		fprintf(stderr, "Error creating thread\n");
 		return 2;
 	}
 
-	printf("main thread working...\n\n");
-	sleep(500);
-
-	/* wait for the second thread to finish */
-	if(pthread_join(producer_thread, NULL)) {
+	//wait for the producer thread to finish
+	if(pthread_join(producer, NULL)) {
 		fprintf(stderr, "Error joining thread\n");
 		return 3;
 	}
 
-	/* wait for the third thread to finish */
-	if(pthread_join(consumer_thread, NULL)) {
+	///wait for the consumer thread to finish
+	if(pthread_join(consumer, NULL)) {
 		fprintf(stderr, "Error joining thread\n");
 		return 4;
 	}
 
-	int i;
-	for (i = 0; i < b.size; i++) {
-		printf("%d: %d\n", i, b.array[i]);
-	}
+	print_b(&b);
 
-	free_buffer(&b);
+	free_b(&b);
 	return 0;
-
 }
 
 // producer thread
 void *produce(void *buffer)
 {
-	while(1) {
-		Buffer *b = (Buffer *)buffer;
+	Buffer *b = (Buffer *)buffer;
+	int step = 0;
+
+	while(step++ < LIMITER) {
+		printf("producer at step %d\n", step);
 		srand(time(NULL));
-		int wait_time = (rand() % 7) + 3;
-		int r = rand();
-		printf("Producer going to sleep for %d\n", wait_time);
-		sleep(wait_time);
+		int sleep_time = rand() % 7 + 3;
 
-		pthread_mutex_lock(&the_mutex);
-		printf("mutex obtained by producer\n");
+		Element e;
+		e.value = rand();
+		e.wait_time = rand() % 9 + 2;
 
-		if (b->used == b->size) {
-			printf("buffer is full\n");
-		} else {
-			insert_element(&(*b), r);
-			printf("inserting %d into buffer\n", r);
-		}
-	
-		pthread_mutex_unlock(&the_mutex);
-		printf("mutex released by producer\n");
+		//LOCK
+		pthread_mutex_lock(&buffer_mutex);
+
+		insert_b(b, &e);
+		
+		pthread_mutex_unlock(&buffer_mutex);
+		//UNLOCK
+
+		printf("produced %d\n", e.value);
+		sleep(sleep_time);
 	}
 
 	return NULL;
@@ -88,23 +81,25 @@ void *produce(void *buffer)
 void *consume(void *buffer)
 {	
 	Buffer *b = (Buffer *)buffer;
+	int step = 0;
 
-	while (1) {
-		int element = 0;
-		int sleeptime = 0;
-		pthread_mutex_lock(&the_mutex);
-		printf("mutex obtained in consumer\n");
+	while(step++ < LIMITER) {
+		printf("consumer at step %d\n", step);
+		Element e;
+		e.value = -1;
 
-		if (b->used == 0) {
-			sleeptime = (rand() % 7) + 2;
-			printf("buffer is empty going to sleep for %d seconds\n", sleeptime);
-		} else {
-			remove_element(b, &element);
-			printf("removed %d from buffer\n", element); 
+		//LOCK
+		pthread_mutex_lock(&buffer_mutex);
+
+		remove_b(b, &e);
+
+		pthread_mutex_unlock(&buffer_mutex);
+		//UNLOCK
+
+		if (e.value != -1) {
+			sleep(e.wait_time);
+			printf("consumed %d\n", e.value);
 		}
-		pthread_mutex_unlock(&the_mutex);
-		if(sleeptime != 0) sleep(sleeptime);
-		printf("mutex released by consumer\n");
 	}
 	return NULL;
 }

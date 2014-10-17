@@ -3,7 +3,7 @@ CFLAGS = -g -Wall
 LFLAGS = 
 INCLUDES = -I/
 LIBS = -lpthread
-SRC = lib_buffer.c model.c
+SRC = buffer_lib.c model.c
 OBJ = $(SRC:.c=.o)
 MAIN = app
 
