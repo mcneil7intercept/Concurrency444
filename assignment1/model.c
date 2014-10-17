@@ -62,9 +62,9 @@ void *produce(void *buffer)
 	while(1) {
 		Buffer *b = (Buffer *)buffer;
 		srand(time(NULL));
-		int wait_time = rand() % 7 + 3;
+		int wait_time = (rand() % 7) + 3;
 		int r = rand();
-
+		printf("Producer going to sleep for %d\n", wait_time);
 		sleep(wait_time);
 
 		pthread_mutex_lock(&the_mutex);
@@ -78,7 +78,7 @@ void *produce(void *buffer)
 		}
 	
 		pthread_mutex_unlock(&the_mutex);
-		printf("mutex released by producer\n\n");
+		printf("mutex released by producer\n");
 	}
 
 	return NULL;
@@ -91,20 +91,20 @@ void *consume(void *buffer)
 
 	while (1) {
 		int element = 0;
-
+		int sleeptime = 0;
 		pthread_mutex_lock(&the_mutex);
 		printf("mutex obtained in consumer\n");
 
 		if (b->used == 0) {
-			printf("buffer is empty\n");
+			sleeptime = (rand() % 7) + 2;
+			printf("buffer is empty going to sleep for %d seconds\n", sleeptime);
 		} else {
 			remove_element(b, &element);
 			printf("removed %d from buffer\n", element); 
 		}
-
 		pthread_mutex_unlock(&the_mutex);
-		printf("mutex released by consumer\n\n");
+		if(sleeptime != 0) sleep(sleeptime);
+		printf("mutex released by consumer\n");
 	}
-	
 	return NULL;
 }
