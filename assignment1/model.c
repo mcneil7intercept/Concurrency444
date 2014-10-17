@@ -1,10 +1,10 @@
 #define LIMITER 20
+#define asm __asm__ __volatile__
 
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
 #include "buffer_lib.h"
-#include <time.h>		//required for srand seeding; TESTING ONLY
 
 void *produce(void *buffer);	//producer thread
 void *consume(void *buffer);	//consumer thread
@@ -54,13 +54,14 @@ void *produce(void *buffer)
 	int step = 0;
 
 	while(step++ < LIMITER) {
-		printf("producer at step %d\n", step);
-		srand(time(NULL));
-		int sleep_time = rand() % 7 + 3;
+		int sleep_time = 0;
+		asm("rdrand %0" : "=r" (sleep_time));
+		sleep_time = abs(sleep_time) % 7 + 3;
 
 		Element e;
-		e.value = rand();
-		e.wait_time = rand() % 9 + 2;
+		asm("rdrand %0" : "=r" (e.value));
+		asm("rdrand %0" : "=r" (e.wait_time));
+		e.wait_time = abs(e.wait_time) % 9 + 2;
 
 		//LOCK
 		pthread_mutex_lock(&buffer_mutex);
@@ -70,7 +71,7 @@ void *produce(void *buffer)
 		pthread_mutex_unlock(&buffer_mutex);
 		//UNLOCK
 
-		printf("produced %d\n", e.value);
+		printf("produced %d, sleeping for %d\n", e.value, sleep_time);
 		sleep(sleep_time);
 	}
 
@@ -84,7 +85,6 @@ void *consume(void *buffer)
 	int step = 0;
 
 	while(step++ < LIMITER) {
-		printf("consumer at step %d\n", step);
 		Element e;
 		e.value = -1;
 
@@ -97,6 +97,7 @@ void *consume(void *buffer)
 		//UNLOCK
 
 		if (e.value != -1) {
+			printf("consumer sleeping for %d\n", e.wait_time);
 			sleep(e.wait_time);
 			printf("consumed %d\n", e.value);
 		}
