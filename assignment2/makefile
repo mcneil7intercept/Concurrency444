@@ -5,7 +5,7 @@ INCLUDES = -I/
 LIBS = -lpthread -lrt
 SRC = philosophers.c
 OBJ = $(SRC:.c=.o)
-MAIN = app
+MAIN = philo
 
 .PHONY: depend clean
 
